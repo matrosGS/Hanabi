@@ -155,7 +155,10 @@ namespace Hanabi {
             Players[1] = new Player(cards.Substring((Player.HandSize * 3), (Player.HandSize * 3)));
             cards = cards.Substring(Player.HandSize * 3 * PlayersCount);
             deck = new Queue<Card>();
-            cards.Split(' ').ToList().ForEach(card => deck.Enqueue(new Card(card)));
+            cards
+                .Split(' ')
+                .ToList()
+                .ForEach(card => deck.Enqueue(new Card(card)));
         }
 
         public void StartTurn() {
@@ -194,7 +197,11 @@ namespace Hanabi {
 
         private int[] ParseCommandArguments(string input, int value) {
             input = input.Substring(input.IndexOf("cards ") + 6);
-            var positions = input.Split(' ').ToList().Select(arg => int.Parse(arg)).ToArray();
+            var positions = input
+                .Split(' ')
+                .ToList()
+                .Select(arg => int.Parse(arg))
+                .ToArray();
             return positions;
         }
 
@@ -246,11 +253,21 @@ namespace Hanabi {
         }
 
         private bool IsRiskyPlay(Card playedCard) {
-            if (playedCard.IsColorKnown && playedCard.IsRankKnown) return false;
+            if (playedCard.IsColorKnown && playedCard.IsRankKnown) {
+                return false;
+            } 
 
-            var sameRanksOnTable = table.ToList().All(value => value == table.First());
-            var possibleColorsSame = playedCard.PossibleColors.Select(color => table[(int)color]).Distinct().Count() == 1;
-            if ((possibleColorsSame || sameRanksOnTable) && playedCard.IsRankKnown) return false;
+            var sameRanksOnTable = table
+                .ToList()
+                .All(value => value == table.First());
+            var possibleColorsSame = playedCard.PossibleColors
+                .Select(color => table[(int)color])
+                .Distinct()
+                .Count() == 1;
+            if ((possibleColorsSame || sameRanksOnTable) && playedCard.IsRankKnown) {
+                return false;
+            } 
+
             return true;
         }
 
@@ -264,7 +281,9 @@ namespace Hanabi {
                 otherPlayersHand.ElementAt(position).PossibleColors.Add(color);
             });
 
-            new int[] { 0, 1, 2, 3, 4 }.Except(args).ToList().ForEach(position => otherPlayersHand[position].PossibleColors.Remove(color));
+            new int[] { 0, 1, 2, 3, 4 }.Except(args)
+                .ToList()
+                .ForEach(position => otherPlayersHand[position].PossibleColors.Remove(color));
 
             return IsColorInfoCorrect(color, otherPlayersHand, args);
         }
@@ -279,20 +298,36 @@ namespace Hanabi {
                 otherPlayersHand.ElementAt(position).PossibleRanks.Add(rank);
             });
 
-            new int[] { 0, 1, 2, 3, 4 }.Except(args).ToList().ForEach(position => otherPlayersHand[position].PossibleRanks.Remove(rank));
+            new int[] { 0, 1, 2, 3, 4 }.Except(args)
+                .ToList()
+                .ForEach(position => otherPlayersHand[position].PossibleRanks.Remove(rank));
 
             return IsRankInfoCorrect(rank, otherPlayersHand, args);
         }
 
         public bool IsRankInfoCorrect(int rank, List<Card> hand, int[] args) {
-            var correct = args.ToList().Where(x => hand.ElementAt(x).Rank != rank).Count() != 0;
-            var full = hand.Where(x => x.Rank == rank).Count() != args.Count();
+            var correct = args
+                .ToList()
+                .Where(x => hand.ElementAt(x).Rank != rank)
+                .Count() != 0;
+
+            var full = hand
+                .Where(x => x.Rank == rank)
+                .Count() != args.Count();
+
             return correct || full;
         }
 
         public bool IsColorInfoCorrect(Color color, List<Card> hand, int[] args) {
-            var correct = args.ToList().Where(x => hand.ElementAt(x).Color != color).Count() != 0;
-            var full = hand.Where(x => x.Color == color).Count() != args.Count();
+            var correct = args
+                .ToList()
+                .Where(x => hand.ElementAt(x).Color != color)
+                .Count() != 0;
+
+            var full = hand
+                .Where(x => x.Color == color)
+                .Count() != args.Count();
+
             return correct || full;
         }
     }
@@ -308,7 +343,9 @@ namespace Hanabi {
             MadeForbiddenMove = false;
             Hand = new List<Card>();
             string[] cards = inputCards.Trim().Split(' ');
-            cards.ToList().ForEach(card => Hand.Add(new Card(card)));
+            cards
+                .ToList()
+                .ForEach(card => Hand.Add(new Card(card)));
         }
     }
 
