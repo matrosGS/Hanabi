@@ -1,11 +1,9 @@
-﻿
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System;
 
 namespace Hanabi {
-
-    enum Color {
+    internal enum Color {
         Red,
         Green,
         Blue,
@@ -13,8 +11,7 @@ namespace Hanabi {
         Yellow
     };
 
-    static class ColorMethods {
-
+    internal static class ColorMethods {
         public static Color GetColor(string color) {
             switch (color) {
                 case "Red":
@@ -83,14 +80,12 @@ namespace Hanabi {
         }
     }
 
-    class Program {
-
+    internal class Program {
         public static void Main() {
-            string input;
             Game game = null;
 
             do {
-                input = Console.ReadLine();
+                var input = Console.ReadLine();
                 if (input == null) {
                     break;
                 }
@@ -100,6 +95,9 @@ namespace Hanabi {
                     game = new Game(input);
                 }
                 else {
+                    if (game == null) {
+                        continue;
+                    }
                     game.StartTurn();
                     game.ProcessTurn(input);
 
@@ -110,12 +108,11 @@ namespace Hanabi {
                         game.EndTurn();
                     }
                 }
-            } while (input != null);
+            } while (true);
         }
     }
 
-    class Game {
-
+    internal class Game {
         public const int PlayersCount = 2;
         public const int ColorsCount = 5;
 
@@ -130,17 +127,16 @@ namespace Hanabi {
         public int WithRisk { get; set; }
 
         private bool finished;
+
         public bool IsFinished {
             get {
                 return finished
-                    || deck.Count() == 0
-                    || CardsPlayed == 25
-                    || Players.FirstOrDefault(x => x.MadeForbiddenMove == true) != null;
+                       || !deck.Any()
+                       || CardsPlayed == 25
+                       || Players.FirstOrDefault(x => x.MadeForbiddenMove == true) != null;
             }
 
-            set {
-                finished = value;
-            }
+            set { finished = value; }
         }
 
         public Game(string cards) {
@@ -180,10 +176,10 @@ namespace Hanabi {
                     break;
                 case Command.TellColor:
                     input = input.Substring(CommandMethods.CommandLength(Command.TellColor));
-                    value = (int)ColorMethods.GetColor(input.Substring(0, input.IndexOf(" ")));
+                    value = (int) ColorMethods.GetColor(input.Substring(0, input.IndexOf(" ")));
                     positions = ParseCommandArguments(input, value);
 
-                    Players[CurrentPlayer].MadeForbiddenMove = TellColor((Color)value, positions);
+                    Players[CurrentPlayer].MadeForbiddenMove = TellColor((Color) value, positions);
                     break;
                 case Command.TellRank:
                     input = input.Substring(CommandMethods.CommandLength(Command.TellRank));
@@ -192,21 +188,23 @@ namespace Hanabi {
 
                     Players[CurrentPlayer].MadeForbiddenMove = TellRank(value, positions);
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
         private int[] ParseCommandArguments(string input, int value) {
-            input = input.Substring(input.IndexOf("cards ") + 6);
+            input = input.Substring(input.IndexOf("cards ", StringComparison.Ordinal) + 6);
             var positions = input
                 .Split(' ')
                 .ToList()
-                .Select(arg => int.Parse(arg))
+                .Select(int.Parse)
                 .ToArray();
             return positions;
         }
 
         public void EndTurn() {
-            CurrentPlayer = GetOtherPlayerID();
+            CurrentPlayer = GetOtherPlayerId();
         }
 
         public void EndGame() {
@@ -217,34 +215,32 @@ namespace Hanabi {
             Console.WriteLine("Turn: {0}, cards: {1}, with risk: {2}", Turn, CardsPlayed, WithRisk);
         }
 
-        public int GetOtherPlayerID() {
+        public int GetOtherPlayerId() {
             return (CurrentPlayer + 1) % PlayersCount;
         }
 
         public void DropCard(int number) {
-            List<Card> currentHand = Players[CurrentPlayer].Hand;
+            var currentHand = Players[CurrentPlayer].Hand;
             ChangeCard(number, currentHand);
         }
 
         public bool PlayCard(int number) {
-            List<Card> currentHand = Players[CurrentPlayer].Hand;
-            Card playedCard = currentHand.ElementAt(number);
+            var currentHand = Players[CurrentPlayer].Hand;
+            var playedCard = currentHand.ElementAt(number);
             ChangeCard(number, currentHand);
 
-            var wrongCard = playedCard.Rank - 1 != table[(int)playedCard.Color];
+            var wrongCard = playedCard.Rank - 1 != table[(int) playedCard.Color];
 
             if (wrongCard) {
                 return true;
             }
-            else {
-                if (IsRiskyPlay(playedCard)) {
-                    WithRisk++;
-                }
-
-                table[(int)playedCard.Color]++;
-                CardsPlayed++;
-                return false;
+            if (IsRiskyPlay(playedCard)) {
+                WithRisk++;
             }
+
+            table[(int) playedCard.Color]++;
+            CardsPlayed++;
+            return false;
         }
 
         private void ChangeCard(int number, List<Card> hand) {
@@ -255,25 +251,21 @@ namespace Hanabi {
         private bool IsRiskyPlay(Card playedCard) {
             if (playedCard.IsColorKnown && playedCard.IsRankKnown) {
                 return false;
-            } 
+            }
 
             var sameRanksOnTable = table
                 .ToList()
                 .All(value => value == table.First());
             var possibleColorsSame = playedCard.PossibleColors
-                .Select(color => table[(int)color])
-                .Distinct()
-                .Count() == 1;
-            if ((possibleColorsSame || sameRanksOnTable) && playedCard.IsRankKnown) {
-                return false;
-            } 
-
-            return true;
+                                         .Select(color => table[(int) color])
+                                         .Distinct()
+                                         .Count() == 1;
+            return (!possibleColorsSame && !sameRanksOnTable) || !playedCard.IsRankKnown;
         }
 
         public bool TellColor(Color color, params int[] args) {
-            int otherPlayerID = GetOtherPlayerID();
-            List<Card> otherPlayersHand = Players[otherPlayerID].Hand;
+            var otherPlayerID = GetOtherPlayerId();
+            var otherPlayersHand = Players[otherPlayerID].Hand;
 
             args.ToList().ForEach(position => {
                 otherPlayersHand.ElementAt(position).IsColorKnown = true;
@@ -281,7 +273,7 @@ namespace Hanabi {
                 otherPlayersHand.ElementAt(position).PossibleColors.Add(color);
             });
 
-            new int[] { 0, 1, 2, 3, 4 }.Except(args)
+            new int[] {0, 1, 2, 3, 4}.Except(args)
                 .ToList()
                 .ForEach(position => otherPlayersHand[position].PossibleColors.Remove(color));
 
@@ -289,8 +281,8 @@ namespace Hanabi {
         }
 
         public bool TellRank(int rank, params int[] args) {
-            int otherPlayerID = GetOtherPlayerID();
-            List<Card> otherPlayersHand = Players[otherPlayerID].Hand;
+            var otherPlayerId = GetOtherPlayerId();
+            var otherPlayersHand = Players[otherPlayerId].Hand;
 
             args.ToList().ForEach(position => {
                 otherPlayersHand.ElementAt(position).IsRankKnown = true;
@@ -298,7 +290,7 @@ namespace Hanabi {
                 otherPlayersHand.ElementAt(position).PossibleRanks.Add(rank);
             });
 
-            new int[] { 0, 1, 2, 3, 4 }.Except(args)
+            new[] {0, 1, 2, 3, 4}.Except(args)
                 .ToList()
                 .ForEach(position => otherPlayersHand[position].PossibleRanks.Remove(rank));
 
@@ -307,33 +299,28 @@ namespace Hanabi {
 
         public bool IsRankInfoCorrect(int rank, List<Card> hand, int[] args) {
             var correct = args
-                .ToList()
-                .Where(x => hand.ElementAt(x).Rank != rank)
-                .Count() != 0;
+                              .ToList()
+                              .Count(x => hand.ElementAt(x).Rank != rank) != 0;
 
             var full = hand
-                .Where(x => x.Rank == rank)
-                .Count() != args.Count();
+                           .Count(x => x.Rank == rank) != args.Count();
 
             return correct || full;
         }
 
         public bool IsColorInfoCorrect(Color color, List<Card> hand, int[] args) {
             var correct = args
-                .ToList()
-                .Where(x => hand.ElementAt(x).Color != color)
-                .Count() != 0;
+                              .ToList()
+                              .Count(x => hand.ElementAt(x).Color != color) != 0;
 
             var full = hand
-                .Where(x => x.Color == color)
-                .Count() != args.Count();
+                           .Count(x => x.Color == color) != args.Count();
 
             return correct || full;
         }
     }
 
-    class Player {
-
+    internal class Player {
         public const int HandSize = 5;
 
         public List<Card> Hand { get; set; }
@@ -342,21 +329,19 @@ namespace Hanabi {
         public Player(string inputCards) {
             MadeForbiddenMove = false;
             Hand = new List<Card>();
-            string[] cards = inputCards.Trim().Split(' ');
+            var cards = inputCards.Trim().Split(' ');
             cards
                 .ToList()
                 .ForEach(card => Hand.Add(new Card(card)));
         }
     }
 
-    class Card {
-
+    internal class Card {
         public string Value { get; set; }
 
         public Color Color {
-
             get {
-                string val = this.Value.Substring(0, 1);
+                var val = Value.Substring(0, 1);
                 switch (val) {
                     case "R":
                         return Color.Red;
@@ -372,37 +357,27 @@ namespace Hanabi {
                         throw new Exception("Wrong card value");
                 }
             }
-
         }
-        public int Rank {
 
-            get {
-                return int.Parse(Value.Trim().Substring(1));
-            }
-        }
+        public int Rank => int.Parse(Value.Trim().Substring(1));
+
         public List<Color> PossibleColors { get; set; }
         public List<int> PossibleRanks { get; set; }
 
         private bool rankKnown;
-        public bool IsRankKnown {
-            get {
-                return rankKnown || PossibleRanks.Count == 1;
-            }
 
-            set {
-                rankKnown = value;
-            }
+        public bool IsRankKnown {
+            get { return rankKnown || PossibleRanks.Count == 1; }
+
+            set { rankKnown = value; }
         }
 
         private bool colorKnown;
-        public bool IsColorKnown {
-            get {
-                return colorKnown || PossibleColors.Count == 1;
-            }
 
-            set {
-                colorKnown = value;
-            }
+        public bool IsColorKnown {
+            get { return colorKnown || PossibleColors.Count == 1; }
+
+            set { colorKnown = value; }
         }
 
         public Card(string value) {
@@ -410,7 +385,7 @@ namespace Hanabi {
             IsColorKnown = false;
             IsRankKnown = false;
             PossibleColors = Enum.GetValues(typeof(Color)).OfType<Color>().ToList();
-            PossibleRanks = new List<int>(new int[] { 1, 2, 3, 4, 5 });
+            PossibleRanks = new List<int>(new[] {1, 2, 3, 4, 5});
         }
     }
 }
